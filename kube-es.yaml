@@ -105,7 +105,7 @@ spec:
             # 初始化集群时，ES从中选出Master节点
             - name: cluster.initial_master_nodes
             # 对应metadata.name名称加编号，编号从0开始
-              value: "kube-es-sts-0,kube-es-sts-1,kube-es-sts-2"
+              value: "kube-es-sts-0"
             - name: discovery.zen.minimum_master_nodes
               value: "1"
             # ES无头服务名称
