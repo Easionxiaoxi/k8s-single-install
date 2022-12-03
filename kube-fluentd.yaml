@@ -315,7 +315,7 @@ spec:
       # 容器配置
       containers:
         - name: fluentd
-          image: quay.io/fluentd_elasticsearch/fluentd:v3.1.0
+          image: fluent/fluentd-kubernetes-daemonset:v1.15-debian-elasticsearch7-amd64-1
           env:
             - name: FLUENTD_ARGS
               value: --no-supervisor -q
