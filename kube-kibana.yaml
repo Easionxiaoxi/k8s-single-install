@@ -1,0 +1,58 @@
+# 1.创建Kibana服务
+apiVersion: v1
+kind: Service
+metadata:
+  # 指定服务名称
+  name: kube-kibana-svc
+  # 绑定命名空间
+  namespace: kube-efk-ns
+  labels:
+    k8s-app: kibana
+spec:
+  # 服务类型NodePort
+  type: NodePort
+  ports:
+    - name: kibana
+      port: 5601
+      targetPort: 5601
+    # 指定访问端口
+      nodePort: 15601
+  selector:
+    k8s-app: kibana
+---
+# 2.部署Kibana
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # 部署名称
+  name: kube-kibana-dm
+  # 指定关联的命名空间
+  namespace: kube-efk-ns
+  labels:
+    k8s-app: kibana
+spec:
+  # 部署副本数
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: kibana
+  template:
+    metadata:
+      labels:
+        k8s-app: kibana
+    spec:
+      # 容器配置
+      containers:
+        - name: kibana
+          image: kibana:7.17.3
+          ports:
+            - containerPort: 5601
+          resources:
+            requests:
+              cpu: 50m
+            limits:
+              cpu: 1000m
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              # 绑定ES服务名称:端口号
+              value: http://kube-es-svc:9200

@@ -1,0 +1,121 @@
+# 1.创建ES无头服务
+kind: Service
+apiVersion: v1
+metadata:
+  # 指定服务名称
+  name: kube-es-svc
+  # 绑定命名空间
+  namespace: kube-efk-ns
+  labels:
+    k8s-app: kube-efk
+spec:
+  selector:
+    k8s-app: kube-efk
+  # 指定无头服务
+  clusterIP: None
+  ports:
+    # 对外端口
+    - port: 9200
+      name: rest
+    # 节点交互端口
+    - port: 9300
+      name: inter-node
+---
+# 2.部署ES
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  # 指定名称
+  name: kube-es-sts
+  # 绑定命名空间
+  namespace: kube-efk-ns
+  labels:
+    k8s-app: kube-efk
+spec:
+  # 绑定服务名称
+  serviceName: kube-es-svc
+  # 部署副本数
+  replicas: 1
+  selector:
+    matchLabels:
+      k8s-app: kube-efk
+  template:
+    metadata:
+      labels:
+        k8s-app: kube-efk
+    spec:
+      # 绑定服务账号
+      serviceAccountName: kube-efk-sa
+      # 初始化容器配置
+      initContainers:
+        - name: increase-vm-max-map
+          image: busybox
+          command: [ "sysctl", "-w", "vm.max_map_count=262144" ]
+          securityContext:
+            privileged: true
+        - name: increase-fd-ulimit
+          image: busybox
+          command: [ "sh", "-c", "ulimit -n 65536" ]
+          securityContext:
+            privileged: true
+        - name: fix-permissions
+          image: busybox
+          imagePullPolicy: IfNotPresent
+          command: [ "sh", "-c", "chown -R 1000:1000 /usr/share/elasticsearch/data" ]
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      # 容器配置
+      containers:
+        # 镜像地址
+        - image: elasticsearch:7.17.3
+          # 镜像名称
+          name: elasticsearch
+          resources:
+            limits:
+              cpu: 1000m
+            requests:
+              cpu: 100m
+          # 端口配置
+          ports:
+            - containerPort: 9200
+              name: rest
+              protocol: TCP
+            - containerPort: 9300
+              name: inter-node
+              protocol: TCP
+          # 数据挂在配置
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+          env:
+            - name: "NAMESPACE"
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            # 定义ES集群名称
+            - name: cluster.name
+              value: k8s-efk-es
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # 初始化集群时，ES从中选出Master节点
+            - name: cluster.initial_master_nodes
+            # 对应metadata.name名称加编号，编号从0开始
+              value: "kube-es-sts-0,kube-es-sts-1,kube-es-sts-2"
+            - name: discovery.zen.minimum_master_nodes
+              value: "1"
+            # ES无头服务名称
+            - name: discovery.seed_hosts
+              value: "kube-es-svc"
+            - name: ES_JAVA_OPTS
+              value: "-Xms512m -Xmx512m"
+            - name: network.host
+              value: "0.0.0.0"
+      # 数据卷配置
+      volumes:
+        - name: data
+          emptyDir: { }
