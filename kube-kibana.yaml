@@ -16,7 +16,7 @@ spec:
       port: 5601
       targetPort: 5601
     # 指定访问端口
-      nodePort: 15601
+      nodePort: 30001
   selector:
     k8s-app: kibana
 ---
