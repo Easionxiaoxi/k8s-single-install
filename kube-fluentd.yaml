@@ -322,7 +322,7 @@ spec:
       labels:
         k8s-app: fluentd
       annotations:
-        seccomp.security.alpha.kubernetes.io/pod: 'docker/default'
+        seccompProfile: 'docker/default'
     spec:
       priorityClassName: system-node-critical
       # 绑定服务账户名称
